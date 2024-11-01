@@ -80,7 +80,7 @@ const Island = ({
     // Check if the scroll event is from a touch event (for mobile)
     const isTouchEvent = e.type === "touchmove";
     const scrollMultiplier = isTouchEvent ? 0.003 : 0.001; // Increase multiplier for mobile
-
+    isTouchEvent && setIsRotating(false); //スマホ用にスワイプを辞めたら背景止めるよう
     const scrollDelta = e.deltaY * scrollMultiplier; // スクロール量を調整
     isLandRef.current.rotation.y += scrollDelta;
 
