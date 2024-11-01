@@ -7,21 +7,32 @@ Source: https://sketchfab.com/3d-models/foxs-islands-163b68e09fcc47618450150be77
 Title: Fox's islands
 */
 
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { useGLTF } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { a } from "@react-spring/three";
 
 import isLandScene from "../assets/3d/island.glb";
 
-const Island = ({ isRotating, setIsRotating, ...props }) => {
-  const { gl, viewPort } = useThree();
+const Island = ({
+  isRotating,
+  setIsRotating,
+  currentStage,
+  setCurrentStage,
+  ...props
+}) => {
+  const { gl, viewport } = useThree();
   const { nodes, materials } = useGLTF(isLandScene);
 
   const isLandRef = useRef();
   const lastX = useRef(0);
-  const rotationSpeed = useRef(0);
-  const dampingFactor = 0.95;
+  const lastY = useRef(0);
+
+  const scrollTimeout = useRef(null); // タイマー用の参照を追加
+
+  const previousStage = useRef(null);
+
+  let animationFrameId = null;
 
   const handlePointDown = (e) => {
     e.stopPropagation();
@@ -29,62 +40,123 @@ const Island = ({ isRotating, setIsRotating, ...props }) => {
     setIsRotating(true);
 
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
     lastX.current = clientX;
+    lastY.current = clientY;
   };
 
   const handlePointUp = (e) => {
     e.stopPropagation();
     e.preventDefault();
     setIsRotating(false);
-
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const delta = (clientX - lastX.current) / viewPort.width;
-    isLandRef.current.rotation.y = delta * 0.01 * Math.PI;
-    lastX.current = clientX;
   };
+
   const handlePointMove = (e) => {
     e.stopPropagation();
     e.preventDefault();
     if (isRotating) {
-      handlePointUp(e);
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+      const deltaX = (clientX - lastX.current) / viewport.width;
+      const deltaY = (clientY - lastY.current) / viewport.height;
+
+      // Island の回転を更新
+      if (deltaX) {
+        isLandRef.current.rotation.y += deltaX * 0.01;
+      }
+      if (deltaY) {
+        isLandRef.current.rotation.y += deltaY * 0.01;
+      }
+      lastX.current = clientX;
+      lastY.current = clientY;
+    }
+  };
+
+  const handleScroll = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setIsRotating(true);
+    const scrollDelta = e.deltaY * 0.001; // スクロール量を調整
+    isLandRef.current.rotation.y += scrollDelta;
+
+    // スクロールの終了を検出するためにタイマーを設定
+    if (scrollTimeout.current) {
+      clearTimeout(scrollTimeout.current); // 既存のタイマーをクリア
+    }
+    scrollTimeout.current = setTimeout(() => {
+      setIsRotating(false); // スクロールが終了したらfalseに設定
+    }, 100); // 100ミリ秒後にsetIsRotatingをfalseにする
+  };
+
+  useEffect(() => {
+    const canvas = gl.domElement;
+    canvas.addEventListener("pointerdown", handlePointDown);
+    canvas.addEventListener("pointerup", handlePointUp);
+    canvas.addEventListener("pointermove", handlePointMove);
+    canvas.addEventListener("wheel", handleScroll);
+
+    return () => {
+      canvas.removeEventListener("pointerdown", handlePointDown);
+      canvas.removeEventListener("pointerup", handlePointUp);
+      canvas.removeEventListener("pointermove", handlePointMove);
+      canvas.removeEventListener("wheel", handleScroll);
+    };
+  }, [gl, handlePointDown, handlePointUp, handlePointMove, handleScroll]);
+
+  const updateRotation = () => {
+    if (isRotating) {
+      const rotation = isLandRef.current.rotation.y;
+      // // 以下のコードで rotation の値を 2 * Math.PI（1周、約6.283ラジアン）以内の範囲に収めるようにしている。
+      // // これにより、値がどれだけ大きくなっても、常に0から1周分の範囲に「正規化」される。
+      const normalizedRotation =
+        ((rotation % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+
+      switch (true) {
+        case normalizedRotation >= 5.35 && normalizedRotation <= 6:
+          currentStage = 4;
+          break;
+        case normalizedRotation >= 0.7 && normalizedRotation <= 1.35:
+          currentStage = 3;
+          break;
+        case normalizedRotation >= 2.2 && normalizedRotation <= 2.85:
+          currentStage = 2;
+          break;
+        case normalizedRotation >= 4.2 && normalizedRotation <= 4.85:
+          currentStage = 1;
+          break;
+        default:
+          currentStage = null;
+      }
+
+      if (currentStage !== previousStage.current) {
+        setCurrentStage(currentStage);
+        previousStage.current = currentStage;
+      }
+
+      // 次のアニメーションフレームをリクエスト
+      animationFrameId = requestAnimationFrame(updateRotation);
     }
   };
 
   useEffect(() => {
-    document.addEventListener("pointerdown", handlePointDown);
-    document.addEventListener("pointerup", handlePointUp);
-    document.addEventListener("pointermove", handlePointMove);
+    // isRotating が true のときだけ requestAnimationFrame を開始
+    if (isRotating) {
+      animationFrameId = requestAnimationFrame(updateRotation);
+    }
 
+    // クリーンアップ処理で requestAnimationFrame を停止
     return () => {
-      document.removeEventListener("pointerdown", handlePointDown);
-      document.removeEventListener("pointerup", handlePointUp);
-      document.removeEventListener("pointermove", handlePointMove);
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+      }
     };
-  }, [gl, handlePointDown, handlePointUp, handlePointMove]);
+  }, [isRotating]); // isRotating が変更されたときにのみリセット
+
   return (
     <a.group ref={isLandRef} {...props}>
       <mesh
         geometry={nodes.polySurface944_tree_body_0.geometry}
-        material={materials.PaletteMaterial001}
-      />
-      <mesh
-        geometry={nodes.polySurface945_tree1_0.geometry}
-        material={materials.PaletteMaterial001}
-      />
-      <mesh
-        geometry={nodes.polySurface946_tree2_0.geometry}
-        material={materials.PaletteMaterial001}
-      />
-      <mesh
-        geometry={nodes.polySurface947_tree1_0.geometry}
-        material={materials.PaletteMaterial001}
-      />
-      <mesh
-        geometry={nodes.polySurface948_tree_body_0.geometry}
-        material={materials.PaletteMaterial001}
-      />
-      <mesh
-        geometry={nodes.polySurface949_tree_body_0.geometry}
         material={materials.PaletteMaterial001}
       />
       <mesh
