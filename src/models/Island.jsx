@@ -77,7 +77,11 @@ const Island = ({
     e.stopPropagation();
     e.preventDefault();
     setIsRotating(true);
-    const scrollDelta = e.deltaY * 0.001; // スクロール量を調整
+    // Check if the scroll event is from a touch event (for mobile)
+    const isTouchEvent = e.type === "touchmove";
+    const scrollMultiplier = isTouchEvent ? 0.003 : 0.001; // Increase multiplier for mobile
+
+    const scrollDelta = e.deltaY * scrollMultiplier; // スクロール量を調整
     isLandRef.current.rotation.y += scrollDelta;
 
     // スクロールの終了を検出するためにタイマーを設定

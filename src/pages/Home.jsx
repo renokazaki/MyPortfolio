@@ -5,7 +5,6 @@ import Island from "../models/Island";
 import { Sky } from "../models/Sky";
 import { Bird } from "../models/Bird";
 import { Plane } from "../models/Plane";
-import { Html, Text } from "@react-three/drei";
 import Info from "../components/Info";
 
 const Home = () => {
@@ -56,7 +55,7 @@ const Home = () => {
         camera={{ near: 0.1, far: 1000 }}
       >
         <Suspense fallback={<Loader />}>
-          <directionalLight position={[1, 1, 1]} intensity={2} />
+          <directionalLight position={[10, 10, 1]} intensity={1} />
           <ambientLight intensity={0.5} />
           <hemisphereLight
             skyColor="#ble1ff"
