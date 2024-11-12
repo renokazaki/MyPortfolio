@@ -5,7 +5,7 @@ import { About, Contact, Home, Projects } from "./pages";
 function App() {
   return (
     <>
-      <main className="bg-slate-300/20">
+      <main className="bg-slate-300/20 w-full h-screen">
         <Router>
           <Navbar />
           <Routes>

@@ -82,7 +82,7 @@ const Island = ({
     const scrollMultiplier = isTouchEvent ? 0.003 : 0.001; // Increase multiplier for mobile
     isTouchEvent && setIsRotating(false); //スマホ用にスワイプを辞めたら背景止めるよう
     const scrollDelta = e.deltaY * scrollMultiplier; // スクロール量を調整
-    isLandRef.current.rotation.y += scrollDelta;
+    isLandRef.current.rotation.y -= scrollDelta;
 
     // スクロールの終了を検出するためにタイマーを設定
     if (scrollTimeout.current) {
